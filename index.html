@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cover Letter Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="upload-section">
+            <div class="drop-zone" id="drop-zone">
+                <p class="drop-text">Drop your file PDF / DOC</p>
+                <p class="upload-label">Upload your resume</p>
+            </div>
+        </div>
+        <textarea class="input-textarea vacancy-input" placeholder="Copy and paste vacancy description here..."></textarea>
+        <div class="options-row">
+            <div class="option-group">
+                <label for="tone">Tone:</label>
+                <select id="tone">
+                    <option selected>Formal</option>
+                    <option>Professional</option>
+                    <option>Enthusiastic</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="language">Language:</label>
+                <select id="language">
+                    <option selected>English</option>
+                    <option>Spanish</option>
+                    <option>French</option>
+                    <option>German</option>
+                    <option>Chinese</option>
+                    <option>Japanese</option>
+                    <option>Russian</option>
+                    <option>Arabic</option>
+                    <option>Portuguese</option>
+                    <option>Hindi</option>
+                </select>
+            </div>
+            <div class="option-group">
+                <label for="length">Length:</label>
+                <select id="length">
+                    <option selected>Short</option>
+                    <option>Medium</option>
+                    <option>Long</option>
+                </select>
+            </div>
+        </div>
+        <button id="generate-btn" class="generate-btn">Generate</button>
+        <textarea class="input-textarea output-textarea" placeholder="Your cover letter will appear here..."></textarea>
+    </div>
+</body>
+</html>
