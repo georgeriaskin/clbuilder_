@@ -33,6 +33,34 @@ body {
     border-color: #0C87FF;
 }
 
+.drop-zone.drag-over {
+    border-color: #0C87FF;
+    background-color: #e6f3ff;
+}
+
+.drop-zone.loading {
+    opacity: 0.7;
+    cursor: wait;
+}
+
+.drop-zone.loading::after {
+    content: '';
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid #0C87FF;
+    border-radius: 50%;
+    border-top-color: transparent;
+    animation: spin 1s linear infinite;
+    margin-left: 10px;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .drop-text {
     font-size: 18px;
     color: #999999;

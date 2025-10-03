@@ -5,13 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cover Letter Generator</title>
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
 </head>
 <body>
     <div class="container">
         <div class="upload-section">
             <div class="drop-zone" id="drop-zone">
-                <p class="drop-text">Drop your file PDF / DOC</p>
-                <p class="upload-label">Upload your resume</p>
+                <input type="file" id="file-input" accept=".pdf,.doc,.docx" style="display: none;">
+                <p class="drop-text">Upload your resume (pdf / doc)</p>
             </div>
         </div>
         <textarea class="input-textarea vacancy-input" placeholder="Copy and paste vacancy description here..."></textarea>
@@ -51,5 +53,193 @@
         <button id="generate-btn" class="generate-btn">Generate</button>
         <textarea class="input-textarea output-textarea" placeholder="Your cover letter will appear here..."></textarea>
     </div>
+
+    <script>
+        // Set pdf.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        let resumeText = '';
+
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const generateBtn = document.getElementById('generate-btn');
+        const vacancyInput = document.querySelector('.vacancy-input');
+        const outputTextarea = document.querySelector('.output-textarea');
+        const toneSelect = document.getElementById('tone');
+        const languageSelect = document.getElementById('language');
+        const lengthSelect = document.getElementById('length');
+
+        // Simple word count helper
+        function wordCount(text) {
+            return text.trim().split(/\s+/).length;
+        }
+
+        // Click to select file
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop events
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                await handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) {
+                await handleFile(e.target.files[0]);
+            }
+        });
+
+        async function handleFile(file) {
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File too large. Please upload a file under 10MB.');
+                return;
+            }
+
+            const validTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            if (!validTypes.includes(file.type)) {
+                console.error('Invalid file type. Please upload PDF or DOC/DOCX.');
+                alert('Please upload a PDF or DOC/DOCX file.');
+                return;
+            }
+
+            dropZone.innerHTML = '<p class="drop-text">Extracting text...</p>';
+            dropZone.classList.add('loading');
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                const arrayBuffer = e.target.result;
+
+                try {
+                    let extractedText = '';
+
+                    if (file.type === 'application/pdf') {
+                        // PDF extraction with pdf.js
+                        const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const textContent = await page.getTextContent();
+                            const pageText = textContent.items.map(item => item.str).join(' ');
+                            extractedText += pageText + '\n';
+                        }
+                    } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                        // DOCX extraction with mammoth.js
+                        const result = await mammoth.extractRawText({arrayBuffer: arrayBuffer});
+                        extractedText = result.value;
+                    } else if (file.type === 'application/msword') {
+                        // DOC fallback - basic binary decode (low accuracy)
+                        const decoder = new TextDecoder('utf-8');
+                        extractedText = decoder.decode(arrayBuffer.slice(0, -4)); // Skip EOF markers
+                        alert('DOC files have limited support. For best results, convert to DOCX or PDF.');
+                    }
+
+                    resumeText = extractedText.trim();
+                    if (resumeText) {
+                        const count = wordCount(resumeText);
+                        dropZone.innerHTML = `<p class="drop-text">Extracted: ${count} words from ${file.name}</p>`;
+                        console.log('Extracted resume text:', resumeText);
+                    } else {
+                        throw new Error('No text extracted');
+                    }
+                } catch (error) {
+                    console.error('Extraction failed:', error);
+                    resumeText = '';
+                    dropZone.innerHTML = '<p class="drop-text">Error: Extraction failed. Please try another file.</p>';
+                    alert('Extraction failed. Ensure the file is not encrypted and is a valid PDF/DOCX. For DOC, consider converting to DOCX/PDF.');
+                } finally {
+                    dropZone.classList.remove('loading');
+                }
+            };
+
+            reader.onerror = function() {
+                console.error('File read error');
+                dropZone.innerHTML = '<p class="drop-text">Error: Could not read file.</p>';
+                dropZone.classList.remove('loading');
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Generate button functionality
+        generateBtn.addEventListener('click', async () => {
+            const vacancy = vacancyInput.value.trim();
+            if (!resumeText) {
+                alert('Please upload and extract text from your resume first.');
+                return;
+            }
+            if (!vacancy) {
+                alert('Please enter the vacancy description.');
+                return;
+            }
+
+            const tone = toneSelect.value;
+            const language = languageSelect.value;
+            const length = lengthSelect.value;
+
+            const originalText = generateBtn.textContent;
+            generateBtn.textContent = 'Thinking...';
+            generateBtn.disabled = true;
+            outputTextarea.value = '';
+
+            try {
+                // TODO: Replace with your OpenRouter API key (store securely, e.g., via environment or input field)
+                const API_KEY = 'your-openrouter-api-key-here'; // Replace this!
+                const model = 'openai/gpt-3.5-turbo'; // Cost-effective model; can change later
+
+                const prompt = `Generate a cover letter in ${language} language, with ${tone} tone, ${length} length.
+Resume: ${resumeText}
+Vacancy description: ${vacancy}
+Make it personalized and compelling to increase interview chances.`;
+
+                const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json',
+                        'HTTP-Referer': window.location.origin, // Optional: for OpenRouter dashboard
+                        'X-Title': 'Cover Letter Generator', // Optional
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [{ role: 'user', content: prompt }],
+                        temperature: 0.7,
+                        max_tokens: length === 'Short' ? 300 : length === 'Medium' ? 500 : 800,
+                    }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const generatedText = data.choices[0].message.content;
+
+                outputTextarea.value = generatedText;
+                console.log('Generated cover letter:', generatedText);
+            } catch (error) {
+                console.error('Generation failed:', error);
+                outputTextarea.value = 'Error generating cover letter. Please check your API key and try again.';
+                alert('Failed to generate cover letter. Ensure your OpenRouter API key is set correctly.');
+            } finally {
+                generateBtn.textContent = originalText;
+                generateBtn.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>
