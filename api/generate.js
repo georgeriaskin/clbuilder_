@@ -9,11 +9,17 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  const openRouterApiKey = process.env.OPENROUTER_API_KEY;
+  const openRouterApiKey = process.env.OPENROUTER_API_KEY?.trim();
 
   if (!openRouterApiKey) {
+    console.error('OpenRouter API key missing or empty');
     return res.status(500).json({ error: 'OpenRouter API key not configured' });
   }
+
+  // Debug logging to verify API key is being loaded
+  console.log('API Key loaded:', openRouterApiKey ? 'YES' : 'NO');
+  console.log('API Key length:', openRouterApiKey?.length);
+  console.log('API Key starts with:', openRouterApiKey?.substring(0, 10));
 
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
